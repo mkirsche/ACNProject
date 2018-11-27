@@ -36,7 +36,9 @@ static void testTCPProp() throws IOException
 		propTCP = cur;
 		System.out.println("Set TCP Proportion to " + String.format("%.2f", propTCP));
 		double res = simulate(it, numServers, 1, propTCP, numTrials);
-		out.println(cur+" "+res);
+		out.println(cur+" "+res+" "+"Best_of_2");
+		res = simulate(it, numServers, 0, propTCP, numTrials);
+		out.println(cur+" "+res+" "+"Random");
 	}
 	propTCP = tmp;
 	out.close();
