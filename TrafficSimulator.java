@@ -1,18 +1,80 @@
 import java.util.*;
+import java.io.*;
 public class TrafficSimulator {
 	static boolean verbose = false;
-	static int nonblockingUpdateFreq = 10;
-public static void main(String[] args)
+	static int nonblockingUpdateFreq;
+	static int numServers = 10;
+	static double propTCP = 0.95;
+	static int numTrials = 1000;
+	static IncomingTraffic it;
+	static String updateFreqFile = "/home/mkirsche/github/ACNProject/updatefreq.txt";
+	static String tcpPropFile = "/home/mkirsche/github/ACNProject/tcpprop.txt";
+	static PrintWriter out;
+public static void main(String[] args) throws IOException
 {
 	initSeed();
-	int numRequests = 1000000;
-	int requestSize = 100;
+	int numRequests = 100;
+	int requestSize = 10;
 	int spacing = 4;
-	double propTCP = 0.95;
-	IncomingTraffic it = new IncomingTraffic(numRequests, requestSize, spacing, propTCP);
-	int numServers = 100;
+	it = new IncomingTraffic(numRequests, requestSize, spacing, propTCP);
 	System.out.println("Parameters: " + numRequests + " " + requestSize + " " + spacing + " " + numServers);
-	for(int i = 0; i<4; i++) simulate(it, numServers, i, propTCP, 5);
+	runBaseline();
+	testBestOf2Hashing();
+	runNonblockingTest();
+	testTCPProp();
+}
+static void testTCPProp() throws IOException
+{
+	out = new PrintWriter(new File(tcpPropFile));
+	out.println("Traffic Distributions");
+	out.println("Proportion of TCP Traffic");
+	out.println("Load standard deviation");
+	double tmp = propTCP;
+	for(int i = 0; i<=20; i++)
+	{
+		double cur = 0.05 * i;
+		propTCP = cur;
+		System.out.println("Set TCP Proportion to " + String.format("%.2f", propTCP));
+		double res = simulate(it, numServers, 1, propTCP, numTrials);
+		out.println(cur+" "+res);
+	}
+	propTCP = tmp;
+	out.close();
+}
+/*
+ * Runs baseline algorithm
+ */
+static void runBaseline()
+{
+	simulate(it, numServers, 0, propTCP, numTrials);
+}
+/*
+ * Compares deterministic hashing to adjacent to make sure second hash function is sufficiently random
+ */
+static void testBestOf2Hashing()
+{
+	for(int i = 1; i<=2; i++) simulate(it, numServers, i, propTCP, numTrials);
+}
+/*
+ * Tests different update frequencies for "non-blocking" variant
+ */
+static void runNonblockingTest() throws IOException
+{
+	out = new PrintWriter(new File(updateFreqFile));
+	out.println("Update Frequency");
+	out.println("Update freqency (packets)");
+	out.println("Load standard deviation");
+	int tmp = nonblockingUpdateFreq;
+	int[] nbfreqs = new int[] {50, 100, 250, 500, 750, 1000, 2000, 5000, 10000};
+	for(int f : nbfreqs)
+	{
+		nonblockingUpdateFreq = f;
+		System.out.println("Set update freq to " +  nonblockingUpdateFreq);
+		double res = simulate(it, numServers, 3, propTCP, numTrials);
+		out.println(nonblockingUpdateFreq+" "+res);
+	}
+	nonblockingUpdateFreq = tmp;
+	out.close();
 }
 static void initSeed()
 {
@@ -26,7 +88,8 @@ static int hash(int val, int s, int m)
 {
 	Random curr = new Random(s);
 	long res = val;
-	for(int i = 0; i<20; i++) res = (res ^ curr.nextInt());
+	res ^= curr.nextInt();
+	//for(int i = 0; i<20; i++) res = (res ^ curr.nextInt());
 	res %= m;
 	if(res < 0) res += m;
 	return (int)res;
@@ -45,7 +108,7 @@ static String[] schemeNames = {"Random", "Best of 2", "Best of 2 (adjacent)", "B
  * 2 = best of 2 adjacent
  * 3 = best of 2 non-blocking
  */
-static void simulate(IncomingTraffic it, int numServers, int scheme, double propTCP, int trials)
+static double simulate(IncomingTraffic it, int numServers, int scheme, double propTCP, int trials)
 {
 	double avgStdev = 0;
 	double avgMin = 0;
@@ -143,6 +206,7 @@ static void simulate(IncomingTraffic it, int numServers, int scheme, double prop
 	System.out.println("Average min: " + avgMin);
 	System.out.println("Average max: " + avgMax);
 	System.out.println();
+	return avgStdev;
 }
 static class IncomingTraffic
 {
@@ -199,4 +263,3 @@ static class Packet implements Comparable<Packet>
 	}
 }
 }
-
