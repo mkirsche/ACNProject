@@ -29,7 +29,6 @@ with open(fn) as f:
             cs.append(colors[colormap[tokens[2]]])
         else:
             cs.append(colors[0])
-    print(colorcount)
     if colorcount > 0:
         fig, ax = plt.subplots()
         for i in range(0, colorcount):
@@ -39,11 +38,9 @@ with open(fn) as f:
                 if cs[j] == colors[i]:
                     curx.append(xs[j])
                     cury.append(ys[j])
-            print(colors[i]+' '+labels[i]+' '+str(cury))
             ax.scatter(curx, cury, c = colors[i], label = labels[i])
         plt.legend()
     else:
-        print('no categories')
         plt.scatter(xs, ys, c = cs)
     plt.title(lines[0])
     plt.xlabel(lines[1])
